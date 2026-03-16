@@ -70,3 +70,19 @@ class LoginWindow(tk.Tk):
 
         tk.Button(self, text="Se connecter", command=self.login).pack(pady=15)
         tk.Button(self, text="Créer un compte", command=self.open_register).pack()
+
+        def login(self):
+        email = self.email_var.get()
+        pwd = self.pwd_var.get()
+
+        # la fonction pour récupérer l'utilisateur par email et vérifier le hash du mot de passe
+        #
+        # if user:
+        #     self.destroy()
+        #     MainApp(user_id=user["id"])
+        # else:
+        #     messagebox.showerror("Erreur", "Identifiants incorrects")
+        # ---------------------------------------------------------
+
+        messagebox.showinfo("Info", "Fonction de connexion à implémenter par vos collègues.")
+
