@@ -9,17 +9,17 @@ class UserAccount:
         self.email = email
         self.motdepasse = self._hash_password(motdepasse) if motdepasse else None
         self.db_config = {
-            'host': 'localhost',
-            'user': 'root',
-            'password': 'root',
+            'host': 'localhost', 
+            'user': 'root', 
+            'password': 'root', 
             'database': 'budget_buddy'
         }
 
     @staticmethod
     def validate_password_strength(password):
-        """Vérifie : 10 caractères, Majuscule, Chiffre, Caractère spécial."""
         if len(password) < 10: return False
         if not re.search(r"[A-Z]", password): return False
+        if not re.search(r"[a-z]", password): return False
         if not re.search(r"[0-9]", password): return False
         if not re.search(r"[!@#$%^&*]", password): return False
         return True
@@ -28,27 +28,23 @@ class UserAccount:
         return hashlib.sha256(password.encode()).hexdigest()
 
     def register(self):
-        """Inscrit dans utilisateur et membres. Retourne True si OK."""
         conn = None
         try:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
-            # Insertion Profil
             cursor.execute("INSERT INTO utilisateur (nom, prenom, email, motdepasse) VALUES (%s, %s, %s, %s)", 
                            (self.nom, self.prenom, self.email, self.motdepasse))
-            # Insertion Authentification
             cursor.execute("INSERT INTO membres (email, motdepasse) VALUES (%s, %s)", 
                            (self.email, self.motdepasse))
             conn.commit()
             return True
-        except mysql.connector.Error:
+        except Exception:
             return False
         finally:
             if conn and conn.is_connected(): conn.close()
 
     @staticmethod
     def login(email, password):
-        """Vérifie les accès dans la table membres."""
         h_pwd = hashlib.sha256(password.encode()).hexdigest()
         config = {'host': 'localhost', 'user': 'root', 'password': 'root', 'database': 'budget_buddy'}
         conn = None
@@ -57,38 +53,72 @@ class UserAccount:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM membres WHERE email = %s AND motdepasse = %s", (email, h_pwd))
             return cursor.fetchone() is not None
-        except: return False
+        except Exception:
+            return False
         finally:
             if conn and conn.is_connected(): conn.close()
-    
+
     def get_balance(self):
-        """Calcule le solde total en soustrayant les retraits des dépôts."""
+        """Calcule le solde en déduisant retraits ET transferts."""
+        conn = None
         try:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
-            # On calcule la somme : dépôts (+) et retraits (-)
             query = """
                 SELECT 
-                SUM(CASE WHEN type = 'dépôts' THEN montant ELSE 0 END) - 
-                SUM(CASE WHEN type = 'retrait' THEN montant ELSE 0 END) 
+                COALESCE(SUM(CASE WHEN type = 'dépôts' THEN montant ELSE 0 END), 0) - 
+                COALESCE(SUM(CASE WHEN type IN ('retrait', 'transfert') THEN montant ELSE 0 END), 0) 
                 FROM transaction
             """
             cursor.execute(query)
-            result = cursor.fetchone()[0]
-            return float(result) if result else 0.0
-        except: return 0.0
+            res = cursor.fetchone()[0]
+            return float(res) if res else 0.0
         finally:
-            if conn.is_connected(): conn.close()
+            if conn and conn.is_connected(): conn.close()
 
-    def process_transaction(self, ref, desc, montant, date, t_type):
-        """Méthode de liaison pour insérer une transaction depuis le dashboard."""
+    def process_transaction(self, ref, desc, montant, date, t_type, cat="Autre"):
+        conn = None
         try:
             conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
-            query = "INSERT INTO transaction (reference, description, montant, date, type) VALUES (%s, %s, %s, %s, %s)"
-            cursor.execute(query, (ref, desc, montant, date, t_type))
+            query = "INSERT INTO transaction (reference, description, montant, date, type, categorie) VALUES (%s, %s, %s, %s, %s, %s)"
+            cursor.execute(query, (ref, desc, montant, date, t_type, cat))
             conn.commit()
             return True
-        except: return False
         finally:
-            if conn.is_connected(): conn.close()
+            if conn and conn.is_connected(): conn.close()
+
+    def get_filtered_transactions(self, t_type="Tous", date_debut=None, date_fin=None, tri_montant=None):
+        conn = None
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            query = "SELECT date, description, montant, type, categorie FROM transaction WHERE 1=1"
+            params = []
+
+            if t_type != "Tous":
+                query += " AND type = %s"; params.append(t_type)
+            if date_debut and date_fin:
+                query += " AND date BETWEEN %s AND %s"; params.append(date_debut); params.append(date_fin)
+
+            if tri_montant in ["ASC", "DESC"]:
+                query += f" ORDER BY montant {tri_montant}"
+            else:
+                query += " ORDER BY id DESC"
+
+            cursor.execute(query, params)
+            return cursor.fetchall()
+        finally:
+            if conn and conn.is_connected(): conn.close()
+
+    def get_stats_by_category(self):
+        """Inclut les transferts dans les stats pour une vision globale des sorties d'argent."""
+        conn = None
+        try:
+            conn = mysql.connector.connect(**self.db_config)
+            cursor = conn.cursor()
+            query = "SELECT categorie, SUM(montant) FROM transaction WHERE type IN ('retrait', 'transfert') GROUP BY categorie"
+            cursor.execute(query)
+            return cursor.fetchall()
+        finally:
+            if conn and conn.is_connected(): conn.close()
