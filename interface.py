@@ -9,3 +9,8 @@ class RegisterWindow(tk.Toplevel):
         self.title("Inscription")
         self.geometry("400x350")
         self.resizable(False, False)
+
+        #Visuel
+        tk.Label(self, text="Nom").pack(pady=5)
+        self.nom_var = tk.StringVar()
+        tk.Entry(self, textvariable=self.nom_var).pack()
