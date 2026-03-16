@@ -86,3 +86,22 @@ class LoginWindow(tk.Tk):
 
         messagebox.showinfo("Info", "Fonction de connexion à implémenter par vos collègues.")
 
+        def open_register(self):
+        RegisterWindow(self)
+
+
+#fenetre principale
+class MainApp(tk.Tk):
+    def __init__(self, user_id):
+        super().__init__()
+        self.title("Gestion Financière")
+        self.geometry("600x400")
+
+        tk.Label(self, text=f"Bienvenue utilisateur {user_id}", font=("Arial", 16)).pack(pady=20)
+        tk.Label(self, text="Ici viendra l'interface principale").pack()
+
+
+if __name__ == "__main__":
+    app = LoginWindow()
+    app.mainloop()
+
