@@ -43,3 +43,20 @@ class RegisterWindow(tk.Toplevel):
         if pwd != pwd_confirm:
             messagebox.showerror("Erreur", "Les mots de passe ne correspondent pas")
             return
+
+         # Appeler votre fonction pour vérifier la sécurité du mot de passe, hasher le mot de passe et insérer dans la base
+
+         # if success:
+         #     messagebox.showinfo("OK", "Compte créé")
+         #     self.destroy()
+         # else:
+         #     messagebox.showerror("Erreur", "Email déjà utilisé")
+       
+#fenetre connection
+class LoginWindow(tk.Tk):
+    def __init__(self):
+        super().__init__()
+        self.title("Connexion - Gestion Financière")
+        self.geometry("350x250")
+        self.resizable(False, False)
+        
