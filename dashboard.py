@@ -1,6 +1,7 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, ttk, filedialog
 import uuid
+import csv
 from datetime import datetime
 from user_account import UserAccount
 
@@ -72,7 +73,6 @@ class DashboardWindow(tk.Toplevel):
         self.type_var = tk.StringVar(value="retrait")
         self.cat_var = tk.StringVar(value="Loisir")
         
-        # AJOUT DU TYPE TRANSFERT ICI
         tk.OptionMenu(row2, self.type_var, "retrait", "dépôts", "transfert").pack(side="left", padx=(0, 10))
         tk.OptionMenu(row2, self.cat_var, "Loisir", "Repas", "Facture", "Salaire", "Autre").pack(side="left")
 
@@ -80,18 +80,27 @@ class DashboardWindow(tk.Toplevel):
                   bg="#5E72E4", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2).pack(fill="x", pady=(10, 0))
 
         # Tableau (Historique)
-        self.tree = ttk.Treeview(self.left_col, columns=("Date", "Desc", "Montant"), show="headings", height=10)
+        self.tree = ttk.Treeview(self.left_col, columns=("Date", "Desc", "Montant", "Type"), show="headings", height=10)
         self.tree.heading("Date", text="DATE")
         self.tree.heading("Desc", text="DESCRIPTION")
         self.tree.heading("Montant", text="MONTANT")
-        self.tree.column("Date", width=100)
-        self.tree.column("Montant", anchor="e")
+        self.tree.heading("Type", text="OPÉRATION")
+        
+        self.tree.column("Date", width=90)
+        self.tree.column("Desc", width=150)
+        self.tree.column("Montant", anchor="e", width=100)
+        self.tree.column("Type", anchor="center", width=100)
+        
         self.tree.pack(fill="both", expand=True, pady=(20, 0))
         
-        # STYLES DE COULEURS POUR CHAQUE TYPE
-        self.tree.tag_configure("depot", foreground="#2DCE89")    # Vert
-        self.tree.tag_configure("retrait", foreground="#F5365C")  # Rouge
-        self.tree.tag_configure("transfert", foreground="#5E72E4") # Bleu Indigo
+        self.tree.tag_configure("depot", foreground="#2DCE89")
+        self.tree.tag_configure("retrait", foreground="#F5365C")
+        self.tree.tag_configure("transfert", foreground="#5E72E4")
+
+        # BOUTON EXPORTER
+        btn_export = tk.Button(self.left_col, text="📥 EXPORTER LE RELEVÉ (CSV)", command=self.export_history, 
+                               bg="#11CDEF", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", pady=8)
+        btn_export.pack(fill="x", pady=(15, 0))
 
     def build_right_panel(self):
         tk.Label(self.right_col, text="RÉPARTITION DES DÉPENSES", bg="white", font=("Segoe UI", 11, "bold"), fg="#32325D").pack(pady=20)
@@ -145,34 +154,51 @@ class DashboardWindow(tk.Toplevel):
         
         for t in transactions[:15]:
             t_type = t[3]
-            # LOGIQUE DE SIGNES ET TAGS POUR LE TYPE TRANSFERT
             if t_type == "dépôts":
                 tag, signe = "depot", "+"
             elif t_type == "transfert":
                 tag, signe = "transfert", "-"
             else:
                 tag, signe = "retrait", "-"
-                
-            val = f"{signe}{t[2]:.2f} €"
-            self.tree.insert("", "end", values=(t[0], t[1], val), tags=(tag,))
+            val_montant = f"{signe}{t[2]:.2f} €"
+            self.tree.insert("", "end", values=(t[0], t[1], val_montant, t_type.upper()), tags=(tag,))
+
+    def export_history(self):
+        """Récupère toutes les données et les enregistre dans un fichier CSV."""
+        user = UserAccount(email=self.user_email)
+        transactions = user.get_filtered_transactions()
+
+        if not transactions:
+            messagebox.showwarning("Export", "Aucun historique à exporter.")
+            return
+
+        f_path = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("Fichier CSV", "*.csv")],
+            initialfile=f"releve_budget_{datetime.now().strftime('%Y%m%d')}.csv"
+        )
+
+        if f_path:
+            try:
+                with open(f_path, mode='w', newline='', encoding='utf-8-sig') as f:
+                    writer = csv.writer(f, delimiter=';')
+                    writer.writerow(["DATE", "DESCRIPTION", "MONTANT", "TYPE", "CATEGORIE"])
+                    writer.writerows(transactions)
+                messagebox.showinfo("Export réussi", f"Le relevé a été enregistré ici :\n{f_path}")
+            except Exception as e:
+                messagebox.showerror("Erreur d'export", f"Impossible d'enregistrer le fichier : {e}")
 
     def save_transaction(self):
         try:
             desc, amount = self.desc_var.get(), self.amount_var.get()
-            t_type = self.type_var.get()
-            cat = self.cat_var.get()
-            
+            t_type, cat = self.type_var.get(), self.cat_var.get()
             if not desc or amount <= 0: return
-            
             user = UserAccount(email=self.user_email)
             ref = str(uuid.uuid4())[:8].upper()
             date_now = datetime.now().strftime("%Y-%m-%d")
-            
             if user.process_transaction(ref, desc, amount, date_now, t_type, cat):
                 self.desc_var.set(""); self.amount_var.set(0.0)
-                self.update_balance()
-                self.load_history()
-                self.refresh_chart()
+                self.update_balance(); self.load_history(); self.refresh_chart()
         except:
             messagebox.showerror("Erreur", "Données invalides.")
 
