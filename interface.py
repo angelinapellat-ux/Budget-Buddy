@@ -14,3 +14,11 @@ class RegisterWindow(tk.Toplevel):
         tk.Label(self, text="Nom").pack(pady=5)
         self.nom_var = tk.StringVar()
         tk.Entry(self, textvariable=self.nom_var).pack()
+
+        tk.Label(self, text="Prénom").pack(pady=5)
+        self.prenom_var = tk.StringVar()
+        tk.Entry(self, textvariable=slef.prenom_var).pack()
+
+        tk.Label(self, text="Email").pack(pady=5)
+        self.prenom_var = tk.StringVar()
+        tk.Entry(self, textvariable=slef.email_var).pack()
