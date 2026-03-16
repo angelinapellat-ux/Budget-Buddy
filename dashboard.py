@@ -25,8 +25,11 @@ class DashboardWindow(tk.Toplevel):
         tk.Label(self.header, text="TABLEAU DE BORD", fg="white", bg="#32325D", 
                  font=("Segoe UI", 14, "bold")).pack(side="left", padx=30)
         
-        tk.Button(self.header, text="DÉCONNEXION", command=self.logout, bg="#F5365C", 
-                  fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=15).pack(side="right", padx=30)
+        # Bouton Déconnexion avec Hover
+        self.btn_logout = tk.Button(self.header, text="DÉCONNEXION", command=self.logout, bg="#F5365C", 
+                  fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=15, cursor="hand2")
+        self.btn_logout.pack(side="right", padx=30)
+        self.add_hover_effect(self.btn_logout, "#D32F2F", "#F5365C")
 
         self.main_container = tk.Frame(self, bg="#F8F9FE")
         self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
@@ -47,6 +50,11 @@ class DashboardWindow(tk.Toplevel):
         style.configure("Treeview", background="white", rowheight=35, font=("Segoe UI", 10))
         style.configure("Treeview.Heading", background="#F6F9FC", font=("Segoe UI", 9, "bold"), borderwidth=0)
         style.map("Treeview", background=[('selected', '#5E72E4')])
+
+    def add_hover_effect(self, widget, hover_color, normal_color):
+        """Ajoute un changement de couleur au survol de la souris."""
+        widget.bind("<Enter>", lambda e: widget.config(bg=hover_color))
+        widget.bind("<Leave>", lambda e: widget.config(bg=normal_color))
 
     def build_left_panel(self):
         # Card Solde
@@ -76,11 +84,14 @@ class DashboardWindow(tk.Toplevel):
         tk.OptionMenu(row2, self.type_var, "retrait", "dépôts", "transfert").pack(side="left", padx=(0, 10))
         tk.OptionMenu(row2, self.cat_var, "Loisir", "Repas", "Facture", "Salaire", "Autre").pack(side="left")
 
-        tk.Button(form, text="ENREGISTRER L'OPÉRATION", command=self.save_transaction, 
-                  bg="#5E72E4", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2).pack(fill="x", pady=(10, 0))
+        # Bouton Enregistrer avec Hover
+        self.btn_save = tk.Button(form, text="ENREGISTRER L'OPÉRATION", command=self.save_transaction, 
+                  bg="#5E72E4", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2")
+        self.btn_save.pack(fill="x", pady=(10, 0))
+        self.add_hover_effect(self.btn_save, "#324CBB", "#5E72E4")
 
-        # Tableau (Historique)
-        self.tree = ttk.Treeview(self.left_col, columns=("Date", "Desc", "Montant", "Type"), show="headings", height=10)
+        # --- TABLEAU (HISTORIQUE) ---
+        self.tree = ttk.Treeview(self.left_col, columns=("Date", "Desc", "Montant", "Type"), show="headings", height=6)
         self.tree.heading("Date", text="DATE")
         self.tree.heading("Desc", text="DESCRIPTION")
         self.tree.heading("Montant", text="MONTANT")
@@ -91,16 +102,26 @@ class DashboardWindow(tk.Toplevel):
         self.tree.column("Montant", anchor="e", width=100)
         self.tree.column("Type", anchor="center", width=100)
         
-        self.tree.pack(fill="both", expand=True, pady=(20, 0))
+        self.tree.pack(fill="x", pady=(20, 10))
         
         self.tree.tag_configure("depot", foreground="#2DCE89")
         self.tree.tag_configure("retrait", foreground="#F5365C")
         self.tree.tag_configure("transfert", foreground="#5E72E4")
 
-        # BOUTON EXPORTER
-        btn_export = tk.Button(self.left_col, text="📥 EXPORTER LE RELEVÉ (CSV)", command=self.export_history, 
-                               bg="#11CDEF", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", pady=8)
-        btn_export.pack(fill="x", pady=(15, 0))
+        # --- GROS BOUTON EXPORTER AVEC HOVER ---
+        self.btn_export = tk.Button(
+            self.left_col, 
+            text="📥 EXPORTER LE RELEVÉ COMPLET (CSV)", 
+            command=self.export_history, 
+            bg="#11CDEF", 
+            fg="white", 
+            font=("Segoe UI", 11, "bold"), 
+            relief="flat", 
+            height=2,
+            cursor="hand2"
+        )
+        self.btn_export.pack(fill="x", pady=(10, 10), padx=10, ipady=10)
+        self.add_hover_effect(self.btn_export, "#05B6D4", "#11CDEF")
 
     def build_right_panel(self):
         tk.Label(self.right_col, text="RÉPARTITION DES DÉPENSES", bg="white", font=("Segoe UI", 11, "bold"), fg="#32325D").pack(pady=20)
@@ -164,20 +185,16 @@ class DashboardWindow(tk.Toplevel):
             self.tree.insert("", "end", values=(t[0], t[1], val_montant, t_type.upper()), tags=(tag,))
 
     def export_history(self):
-        """Récupère toutes les données et les enregistre dans un fichier CSV."""
         user = UserAccount(email=self.user_email)
         transactions = user.get_filtered_transactions()
-
         if not transactions:
             messagebox.showwarning("Export", "Aucun historique à exporter.")
             return
-
         f_path = filedialog.asksaveasfilename(
             defaultextension=".csv",
             filetypes=[("Fichier CSV", "*.csv")],
             initialfile=f"releve_budget_{datetime.now().strftime('%Y%m%d')}.csv"
         )
-
         if f_path:
             try:
                 with open(f_path, mode='w', newline='', encoding='utf-8-sig') as f:

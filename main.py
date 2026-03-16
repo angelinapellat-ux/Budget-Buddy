@@ -136,4 +136,8 @@ class BudgetBuddyApp(tk.Tk):
 
 if __name__ == "__main__":
     app = BudgetBuddyApp()
-    app.mainloop()
+    try:
+        app.mainloop()
+    except KeyboardInterrupt:
+        # On ignore l'erreur et on ferme proprement
+        pass
