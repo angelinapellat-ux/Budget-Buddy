@@ -1,50 +1,50 @@
-## 🖥️ Utilisation
+# 💰 Lancement
+python main.py
 
-Pour tester la logique du projet, lancez simplement le script principal :
-python action.py
+Compte Test : 
+email : un.deux@test.com
+mot de passe : Azertyuiop@.1
+
+# 💰 Budget Buddy Pro
+**L'assistant intelligent pour la gestion de vos finances personnelles.**
+
+Budget Buddy est une application de bureau développée en **Python** avec **Tkinter**, permettant de suivre ses revenus, ses dépenses et ses transferts bancaires en temps réel avec une interface moderne et intuitive (Design Argon/Material).
 ---
+## ✨ Fonctionnalités Clés
 
-## 🚀 Fonctionnalités principales
+* **🔒 Sécurité Renforcée** : 
+    * Validation stricte des mots de passe (10 car. min, Maj, Min, Chiffre, Symbole).
+    * Hachage des données sensibles en **SHA-256**.
+* **📈 Dashboard Interactif** : 
+    * Vue d'ensemble du solde en temps réel (Vert si positif, Rouge si négatif).
+    * Graphique de répartition des dépenses par catégorie (Matplotlib).
+    * Historique filtrable des 15 dernières transactions.
+* **💸 Gestion Complète des Opérations** :
+    * Support des **Dépôts**, **Retraits** et **Transferts**.
+    * Système de catégories (Loisir, Repas, Factures, Salaire...).
+* **💾 Persistance des Données** :
+    * Base de données **MySQL** pour les utilisateurs et transactions.
+    * Option "Se souvenir de moi" via stockage JSON local sécurisé.
+      
 
-* **Système de Sécurité Avancé** :
-* Validation par expressions régulières (Regex) de la complexité des mots de passe (min. 10 caractères, majuscule, chiffre, caractère spécial).
-* Hachage cryptographique **SHA-256** pour garantir qu'aucun mot de passe n'est traité en clair.
+## 🛠️ Stack Technique
 
+* **Langage** : Python 3.x
+* **Interface Graphique** : Tkinter (Customized UI)
+* **Base de Données** : MySQL
+* **Visualisation** : Matplotlib
+* **Sécurité** : Hashlib, Re (Regex)
 
-* **Modélisation Objet (POO)** :
-* Séparation claire entre les entités `UserAccount` (Gestion du compte) et `Transaction` (Modèle de données).
+## 🚀 Installation & Configuration
 
+### 1. Prérequis
+Assurez-vous d'avoir installé :
+* Python 3.10+
+* Un serveur MySQL (XAMPP, WAMP ou MySQL Server)
 
-* **Logique Financière** :
-* Gestion des flux (Dépôts, Retraits, Transferts entre comptes).
-* Calcul dynamique du solde et système d'alertes automatiques en cas de découvert.
-
-
-* **Moteur de Recherche Multicritère** :
-* Filtrage dynamique par dates, catégories, types de transactions et tri par montants.
-
-
-
-## 🛠️ Architecture des Modules
-
-Le code est organisé de manière modulaire pour favoriser la maintenabilité :
-
-* **`user_account.py`** : Cœur de l'application. Gère l'authentification, la sécurité et la logique de calcul globale.
-* **`transaction.py`** : Définit la structure de données d'une transaction financière.
-* **`action.py`** : Script d'exécution simulant un flux complet (Inscription -> Sécurisation -> Opérations bancaires).
-
-## 🔐 Concepts Clés implémentés
-
-### 1. Sécurité "by Design"
-
-L'inscription impose une vérification de la force du mot de passe avant toute instanciation. Le hachage est appliqué immédiatement pour protéger l'utilisateur.
-
-### 2. Logique de Transfert
-
-La méthode de transfert a été conçue pour être atomique : elle retire le montant d'un compte et l'ajoute instantanément au compte destinataire, garantissant l'intégrité des soldes.
-
-### 3. Vue Globale & Statistiques
-
-Une méthode dédiée permet d'extraire une synthèse des dépenses par mois et par catégorie, prête à être consommée par une interface graphique ou un moteur de reporting.
-
-
+### 2. Dépendances
+Installez les bibliothèques nécessaires via pip :
+pip install mysql-connector-python matplotlib
+Installez les bibliothèques nécessaires via pip :
+```bash
+pip install mysql-connector-python matplotlib
