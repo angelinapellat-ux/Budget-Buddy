@@ -8,7 +8,6 @@ class BudgetChart(tk.Frame):
         self.configure(bg="white")
         self.label = tk.Label(self, text="RÉPARTITION DES DÉPENSES", bg="white", font=("Segoe UI", 11, "bold"), fg="#32325D")
         self.label.pack(pady=20)
-        
         self.container = tk.Frame(self, bg="white")
         self.container.pack(fill="both", expand=True)
 
