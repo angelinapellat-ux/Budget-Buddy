@@ -1,223 +1,151 @@
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
-import uuid
-import csv
+import uuid, csv, matplotlib.pyplot as plt
 from datetime import datetime
 from user_account import UserAccount
-
-# Imports pour l'intégration graphique
-import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 class DashboardWindow(tk.Toplevel):
     def __init__(self, master, user_email):
         super().__init__(master)
-        self.title("Budget Buddy Pro")
-        self.geometry("1100x700")
+        self.title("Budget Buddy Assistant")
+        self.geometry("1100x750")
+        self.iconbitmap("asset/logo.ico")
         self.configure(bg="#F8F9FE")
         self.user_email = user_email
+        self.user = UserAccount(email=user_email)
 
         self.setup_styles()
-
-        # --- Header ---
-        self.header = tk.Frame(self, bg="#32325D", height=70)
-        self.header.pack(fill="x")
-        tk.Label(self.header, text="TABLEAU DE BORD", fg="white", bg="#32325D", 
-                 font=("Segoe UI", 14, "bold")).pack(side="left", padx=30)
-        
-        # Bouton Déconnexion avec Hover
-        self.btn_logout = tk.Button(self.header, text="DÉCONNEXION", command=self.logout, bg="#F5365C", 
-                  fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=15, cursor="hand2")
-        self.btn_logout.pack(side="right", padx=30)
-        self.add_hover_effect(self.btn_logout, "#D32F2F", "#F5365C")
-
-        self.main_container = tk.Frame(self, bg="#F8F9FE")
-        self.main_container.pack(fill="both", expand=True, padx=20, pady=20)
-
-        # Colonnes
-        self.left_col = tk.Frame(self.main_container, bg="#F8F9FE", width=500)
-        self.left_col.pack(side="left", fill="both", expand=True, padx=(0, 10))
-
-        self.right_col = tk.Frame(self.main_container, bg="white", highlightthickness=1, highlightbackground="#E9ECEF")
-        self.right_col.pack(side="right", fill="both", expand=True, padx=(10, 0))
-
-        self.build_left_panel()
-        self.build_right_panel()
+        self.build_ui()
+        self.refresh_all()
 
     def setup_styles(self):
-        style = ttk.Style()
-        style.theme_use("clam")
-        style.configure("Treeview", background="white", rowheight=35, font=("Segoe UI", 10))
-        style.configure("Treeview.Heading", background="#F6F9FC", font=("Segoe UI", 9, "bold"), borderwidth=0)
-        style.map("Treeview", background=[('selected', '#5E72E4')])
+        s = ttk.Style()
+        s.theme_use("clam")
+        s.configure("Treeview", background="white", rowheight=35, font=("Segoe UI", 10))
+        s.configure("Treeview.Heading", background="#F6F9FC", font=("Segoe UI", 9, "bold"))
+        s.map("Treeview", background=[('selected', '#5E72E4')])
 
-    def add_hover_effect(self, widget, hover_color, normal_color):
-        """Ajoute un changement de couleur au survol de la souris."""
-        widget.bind("<Enter>", lambda e: widget.config(bg=hover_color))
-        widget.bind("<Leave>", lambda e: widget.config(bg=normal_color))
+    def build_ui(self):
+        # --- HEADER ---
+        h = tk.Frame(self, bg="#32325D", height=70)
+        h.pack(fill="x")
+        tk.Label(h, text="TABLEAU DE BORD", fg="white", bg="#32325D", font=("Segoe UI", 14, "bold")).pack(side="left", padx=30)
+        
+        btn_out = tk.Button(h, text="DÉCONNEXION", command=self.logout, bg="#F5365C", fg="white", font=("Segoe UI", 9, "bold"), relief="flat", padx=15, cursor="hand2")
+        btn_out.pack(side="right", padx=30)
+        # On utilise la fonction dédiée pour le hover
+        self.add_hover_effect(btn_out, "#D32F2F", "#F5365C")
 
-    def build_left_panel(self):
+        main = tk.Frame(self, bg="#F8F9FE")
+        main.pack(fill="both", expand=True, padx=20, pady=20)
+
+        # --- COLONNE GAUCHE ---
+        left = tk.Frame(main, bg="#F8F9FE")
+        left.pack(side="left", fill="both", expand=True, padx=(0, 10))
+
         # Card Solde
-        solde_card = tk.Frame(self.left_col, bg="white", padx=20, pady=15, highlightthickness=1, highlightbackground="#E9ECEF")
-        solde_card.pack(fill="x", pady=(0, 20))
-        tk.Label(solde_card, text=f"COMPTE : {self.user_email}", bg="white", fg="#8898AA", font=("Segoe UI", 8, "bold")).pack(anchor="w")
-        self.balance_label = tk.Label(solde_card, text="-- €", bg="white", font=("Segoe UI", 28, "bold"))
-        self.balance_label.pack(anchor="w")
+        card = tk.Frame(left, bg="white", padx=20, pady=15, highlightthickness=1, highlightbackground="#E9ECEF")
+        card.pack(fill="x", pady=(0, 20))
+        tk.Label(card, text=f"COMPTE : {self.user_email}", bg="white", fg="#8898AA", font=("Segoe UI", 8, "bold")).pack(anchor="w")
+        self.bal_lbl = tk.Label(card, text="-- €", bg="white", font=("Segoe UI", 28, "bold"))
+        self.bal_lbl.pack(anchor="w")
 
         # Formulaire
-        form = tk.Frame(self.left_col, bg="white", padx=20, pady=15, highlightthickness=1, highlightbackground="#E9ECEF")
+        form = tk.Frame(left, bg="white", padx=20, pady=15, highlightthickness=1, highlightbackground="#E9ECEF")
         form.pack(fill="x")
 
-        row = tk.Frame(form, bg="white")
-        row.pack(fill="x")
-        self.desc_var = tk.StringVar()
-        self.amount_var = tk.DoubleVar()
-        self.create_entry(row, "Description", self.desc_var, 15).pack(side="left", padx=(0, 10))
-        self.create_entry(row, "Montant (€)", self.amount_var, 8).pack(side="left")
+        row1 = tk.Frame(form, bg="white")
+        row1.pack(fill="x")
+        self.vars = {k: tk.StringVar() for k in ['desc', 'amt', 'type', 'cat']}
+        self.vars['type'].set("retrait")
+        self.vars['cat'].set("Loisir")
+
+        self.create_entry(row1, "Description", self.vars['desc'], 15).pack(side="left", padx=(0, 10))
+        self.create_entry(row1, "Montant (€)", self.vars['amt'], 8).pack(side="left")
 
         row2 = tk.Frame(form, bg="white")
         row2.pack(fill="x", pady=10)
-        
-        self.type_var = tk.StringVar(value="retrait")
-        self.cat_var = tk.StringVar(value="Loisir")
-        
-        tk.OptionMenu(row2, self.type_var, "retrait", "dépôts", "transfert").pack(side="left", padx=(0, 10))
-        tk.OptionMenu(row2, self.cat_var, "Loisir", "Repas", "Facture", "Salaire", "Autre").pack(side="left")
+        tk.OptionMenu(row2, self.vars['type'], "retrait", "dépôts", "transfert").pack(side="left", padx=(0, 10))
+        tk.OptionMenu(row2, self.vars['cat'], "Loisir", "Repas", "Facture", "Salaire", "Autre").pack(side="left")
 
-        # Bouton Enregistrer avec Hover
-        self.btn_save = tk.Button(form, text="ENREGISTRER L'OPÉRATION", command=self.save_transaction, 
-                  bg="#5E72E4", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2")
-        self.btn_save.pack(fill="x", pady=(10, 0))
-        self.add_hover_effect(self.btn_save, "#324CBB", "#5E72E4")
+        # Hover sur ENREGISTRER
+        btn_save = tk.Button(form, text="ENREGISTRER L'OPÉRATION", command=self.save, bg="#5E72E4", fg="white", font=("Segoe UI", 10, "bold"), relief="flat", height=2, cursor="hand2")
+        btn_save.pack(fill="x", pady=(10, 0))
+        self.add_hover_effect(btn_save, "#324CBB", "#5E72E4")
 
-        # --- TABLEAU (HISTORIQUE) ---
-        self.tree = ttk.Treeview(self.left_col, columns=("Date", "Desc", "Montant", "Type"), show="headings", height=6)
-        self.tree.heading("Date", text="DATE")
-        self.tree.heading("Desc", text="DESCRIPTION")
-        self.tree.heading("Montant", text="MONTANT")
-        self.tree.heading("Type", text="OPÉRATION")
-        
-        self.tree.column("Date", width=90)
-        self.tree.column("Desc", width=150)
-        self.tree.column("Montant", anchor="e", width=100)
-        self.tree.column("Type", anchor="center", width=100)
-        
+        # Tableau
+        cols = ("Date", "Desc", "Montant", "Type")
+        self.tree = ttk.Treeview(left, columns=cols, show="headings", height=6)
+        for c in cols: 
+            self.tree.heading(c, text=c.upper())
+            self.tree.column(c, width=100, anchor="center")
         self.tree.pack(fill="x", pady=(20, 10))
         
-        self.tree.tag_configure("depot", foreground="#2DCE89")
+        self.tree.tag_configure("dépôts", foreground="#2DCE89")
         self.tree.tag_configure("retrait", foreground="#F5365C")
         self.tree.tag_configure("transfert", foreground="#5E72E4")
 
-        # --- GROS BOUTON EXPORTER AVEC HOVER ---
-        self.btn_export = tk.Button(
-            self.left_col, 
-            text="📥 EXPORTER LE RELEVÉ COMPLET (CSV)", 
-            command=self.export_history, 
-            bg="#11CDEF", 
-            fg="white", 
-            font=("Segoe UI", 11, "bold"), 
-            relief="flat", 
-            height=2,
-            cursor="hand2"
-        )
-        self.btn_export.pack(fill="x", pady=(10, 10), padx=10, ipady=10)
-        self.add_hover_effect(self.btn_export, "#05B6D4", "#11CDEF")
+        # Hover sur EXPORTER
+        btn_export = tk.Button(left, text="📥 EXPORTER EN CSV", command=self.export, bg="#11CDEF", fg="white", font=("Segoe UI", 11, "bold"), relief="flat", height=2, cursor="hand2")
+        btn_export.pack(fill="x")
+        self.add_hover_effect(btn_export, "#05B6D4", "#11CDEF")
 
-    def build_right_panel(self):
-        tk.Label(self.right_col, text="RÉPARTITION DES DÉPENSES", bg="white", font=("Segoe UI", 11, "bold"), fg="#32325D").pack(pady=20)
-        self.chart_frame = tk.Frame(self.right_col, bg="white")
-        self.chart_frame.pack(fill="both", expand=True, padx=20, pady=20)
-        
-        self.update_balance()
-        self.load_history()
-        self.refresh_chart()
+        # --- COLONNE DROITE ---
+        self.right = tk.Frame(main, bg="white", highlightthickness=1, highlightbackground="#E9ECEF")
+        self.right.pack(side="right", fill="both", expand=True, padx=(10, 0))
+        tk.Label(self.right, text="RÉPARTITION DES DÉPENSES", bg="white", font=("Segoe UI", 11, "bold"), fg="#32325D").pack(pady=20)
+        self.chart_frame = tk.Frame(self.right, bg="white")
+        self.chart_frame.pack(fill="both", expand=True)
+
+    def add_hover_effect(self, widget, hover_color, normal_color):
+        widget.bind("<Enter>", lambda e: widget.config(bg=hover_color))
+        widget.bind("<Leave>", lambda e: widget.config(bg=normal_color))
 
     def create_entry(self, master, label, var, width):
-        container = tk.Frame(master, bg="white")
-        tk.Label(container, text=label, bg="white", fg="#8898AA", font=("Segoe UI", 8, "bold")).pack(anchor="w")
-        tk.Entry(container, textvariable=var, width=width, relief="flat", highlightthickness=1, highlightbackground="#CAD1D7").pack(ipady=5)
-        return container
+        f = tk.Frame(master, bg="white")
+        tk.Label(f, text=label, bg="white", fg="#8898AA", font=("Segoe UI", 8, "bold")).pack(anchor="w")
+        tk.Entry(f, textvariable=var, width=width, relief="flat", highlightthickness=1, highlightbackground="#CAD1D7").pack(ipady=5)
+        return f
 
-    def refresh_chart(self):
-        for widget in self.chart_frame.winfo_children(): widget.destroy()
-        user = UserAccount(email=self.user_email)
-        stats = user.get_stats_by_category()
-
-        if not stats:
-            tk.Label(self.chart_frame, text="Aucune donnée à afficher", bg="white", fg="#8898AA").pack(expand=True)
-            return
-
-        labels = [s[0] for s in stats]
-        sizes = [float(s[1]) for s in stats]
-        colors = ['#5E72E4', '#2DCE89', '#11CDEF', '#FB6340', '#F5365C']
-
-        fig, ax = plt.subplots(figsize=(5, 5), dpi=100)
-        fig.patch.set_facecolor('white')
-        ax.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=140, colors=colors, wedgeprops={'edgecolor': 'white', 'linewidth': 2})
-        ax.axis('equal')
-
-        canvas = FigureCanvasTkAgg(fig, master=self.chart_frame)
-        canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
-
-    def update_balance(self):
-        user = UserAccount(email=self.user_email)
-        bal = user.get_balance()
-        color = "#F5365C" if bal < 0 else "#2DCE89"
-        self.balance_label.config(text=f"{bal:.2f} €", fg=color)
-        if bal < 0:
-            messagebox.showwarning("Alerte Découvert", f"Attention : Solde négatif ({bal:.2f} €)")
-
-    def load_history(self):
-        for i in self.tree.get_children(): self.tree.delete(i)
-        user = UserAccount(email=self.user_email)
-        transactions = user.get_filtered_transactions()
+    def refresh_all(self):
+        # 1. Solde
+        bal = self.user.get_balance()
+        self.bal_lbl.config(text=f"{bal:.2f} €", fg="#F5365C" if bal < 0 else "#2DCE89")
         
-        for t in transactions[:15]:
-            t_type = t[3]
-            if t_type == "dépôts":
-                tag, signe = "depot", "+"
-            elif t_type == "transfert":
-                tag, signe = "transfert", "-"
-            else:
-                tag, signe = "retrait", "-"
-            val_montant = f"{signe}{t[2]:.2f} €"
-            self.tree.insert("", "end", values=(t[0], t[1], val_montant, t_type.upper()), tags=(tag,))
+        # 2. Historique
+        self.tree.delete(*self.tree.get_children())
+        for t in self.user.get_filtered_transactions()[:15]:
+            signe = "+" if t[3] == "dépôts" else "-"
+            self.tree.insert("", "end", values=(t[0], t[1], f"{signe}{t[2]:.2f} €", t[3].upper()), tags=(t[3],))
 
-    def export_history(self):
-        user = UserAccount(email=self.user_email)
-        transactions = user.get_filtered_transactions()
-        if not transactions:
-            messagebox.showwarning("Export", "Aucun historique à exporter.")
-            return
-        f_path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("Fichier CSV", "*.csv")],
-            initialfile=f"releve_budget_{datetime.now().strftime('%Y%m%d')}.csv"
-        )
-        if f_path:
-            try:
-                with open(f_path, mode='w', newline='', encoding='utf-8-sig') as f:
-                    writer = csv.writer(f, delimiter=';')
-                    writer.writerow(["DATE", "DESCRIPTION", "MONTANT", "TYPE", "CATEGORIE"])
-                    writer.writerows(transactions)
-                messagebox.showinfo("Export réussi", f"Le relevé a été enregistré ici :\n{f_path}")
-            except Exception as e:
-                messagebox.showerror("Erreur d'export", f"Impossible d'enregistrer le fichier : {e}")
+        # 3. Graphique
+        for w in self.chart_frame.winfo_children(): w.destroy()
+        stats = self.user.get_stats_by_category()
+        if stats:
+            fig, ax = plt.subplots(figsize=(4, 4), dpi=100)
+            ax.pie([float(s[1]) for s in stats], labels=[s[0] for s in stats], autopct='%1.1f%%', colors=['#5E72E4', '#2DCE89', '#11CDEF', '#FB6340', '#F5365C'])
+            FigureCanvasTkAgg(fig, self.chart_frame).get_tk_widget().pack(fill="both")
+            plt.close()
 
-    def save_transaction(self):
+    def save(self):
         try:
-            desc, amount = self.desc_var.get(), self.amount_var.get()
-            t_type, cat = self.type_var.get(), self.cat_var.get()
-            if not desc or amount <= 0: return
-            user = UserAccount(email=self.user_email)
-            ref = str(uuid.uuid4())[:8].upper()
-            date_now = datetime.now().strftime("%Y-%m-%d")
-            if user.process_transaction(ref, desc, amount, date_now, t_type, cat):
-                self.desc_var.set(""); self.amount_var.set(0.0)
-                self.update_balance(); self.load_history(); self.refresh_chart()
-        except:
-            messagebox.showerror("Erreur", "Données invalides.")
+            d, a = self.vars['desc'].get(), float(self.vars['amt'].get())
+            if d and a > 0:
+                ref = str(uuid.uuid4())[:8].upper()
+                if self.user.process_transaction(ref, d, a, datetime.now().strftime("%Y-%m-%d"), self.vars['type'].get(), self.vars['cat'].get()):
+                    self.vars['desc'].set(""); self.vars['amt'].set("")
+                    self.refresh_all()
+        except: messagebox.showerror("Erreur", "Saisie invalide")
+
+    def export(self):
+        path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV", "*.csv")])
+        if path:
+            with open(path, 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv.writer(f, delimiter=';')
+                writer.writerow(["DATE", "DESCRIPTION", "MONTANT", "TYPE", "CATEGORIE"])
+                writer.writerows(self.user.get_filtered_transactions())
+            messagebox.showinfo("Export", "Réussi !")
 
     def logout(self):
         self.master.deiconify()

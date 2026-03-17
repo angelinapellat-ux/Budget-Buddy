@@ -10,8 +10,9 @@ CONFIG_FILE = ".session_data.json"
 class BudgetBuddyApp(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Budget Buddy - Connexion")
+        self.title("Panel de Connexion")
         self.geometry("400x650")
+        self.iconbitmap("asset/logo.ico")
         self.configure(bg="#F8F9FE") # Fond gris clair moderne
         
         # Style de la carte centrale (Card Design)
