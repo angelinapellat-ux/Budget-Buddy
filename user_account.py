@@ -1,68 +1,73 @@
 import mysql.connector
-import hashlib
 import re
+from security import SecurityManager
 
 class UserAccount:
     def __init__(self, nom=None, prenom=None, email=None, motdepasse=None):
         self.nom = nom
         self.prenom = prenom
         self.email = email
-        self.motdepasse = self._hash_password(motdepasse) if motdepasse else None
+        self.motdepasse = motdepasse
+        # Centralisation de la config DB
         self.db_config = {
-            'host': 'localhost', 
-            'user': 'root', 
-            'password': 'root', 
-            'database': 'budget_buddy'
+            'host': 'localhost', 'user': 'root', 
+            'password': 'root', 'database': 'budget_buddy'
         }
+
+    def _get_connection(self):
+        """Utilitaire interne pour créer une connexion proprement."""
+        return mysql.connector.connect(**self.db_config)
 
     @staticmethod
     def validate_password_strength(password):
+        """Vérifie la robustesse du mot de passe via Regex."""
         if len(password) < 10: return False
-        if not re.search(r"[A-Z]", password): return False
-        if not re.search(r"[a-z]", password): return False
-        if not re.search(r"[0-9]", password): return False
-        if not re.search(r"[!@#$%^&*]", password): return False
-        return True
-
-    def _hash_password(self, password):
-        return hashlib.sha256(password.encode()).hexdigest()
+        return all([re.search(r, password) for r in [r"[A-Z]", r"[a-z]", r"[0-9]", r"[!@#$%^&*]"]])
 
     def register(self):
+        """Inscrit l'utilisateur en hachant le mot de passe avec un sel unique."""
         conn = None
         try:
-            conn = mysql.connector.connect(**self.db_config)
+            hashed_pw, salt = SecurityManager.hash_password(self.motdepasse)
+            conn = self._get_connection()
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO utilisateur (nom, prenom, email, motdepasse) VALUES (%s, %s, %s, %s)", 
-                           (self.nom, self.prenom, self.email, self.motdepasse))
-            cursor.execute("INSERT INTO membres (email, motdepasse) VALUES (%s, %s)", 
-                           (self.email, self.motdepasse))
+
+            # Insertion double table (utilisateur + membres)
+            cursor.execute("INSERT INTO utilisateur (nom, prenom, email, motdepasse, salt) VALUES (%s, %s, %s, %s, %s)",
+                           (self.nom, self.prenom, self.email, hashed_pw, salt))
+            cursor.execute("INSERT INTO membres (email, motdepasse, salt) VALUES (%s, %s, %s)",
+                           (self.email, hashed_pw, salt))
+
             conn.commit()
             return True
-        except Exception:
-            return False
+        except Exception as e:
+            print(f"Erreur inscription : {e}"); return False
         finally:
-            if conn and conn.is_connected(): conn.close()
+            if conn: conn.close()
 
     @staticmethod
     def login(email, password):
-        h_pwd = hashlib.sha256(password.encode()).hexdigest()
+        """Vérifie les identifiants en comparant les hashs via SecurityManager."""
         config = {'host': 'localhost', 'user': 'root', 'password': 'root', 'database': 'budget_buddy'}
         conn = None
         try:
             conn = mysql.connector.connect(**config)
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM membres WHERE email = %s AND motdepasse = %s", (email, h_pwd))
-            return cursor.fetchone() is not None
-        except Exception:
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT motdepasse, salt FROM membres WHERE email = %s", (email,))
+            user = cursor.fetchone()
+
+            if user and SecurityManager.verify_password(password, user['motdepasse'], user['salt']):
+                return True
             return False
+        except Exception as e:
+            print(f"Erreur login : {e}"); return False
         finally:
-            if conn and conn.is_connected(): conn.close()
+            if conn: conn.close()
 
     def get_balance(self):
-        """Calcule le solde en déduisant retraits ET transferts."""
-        conn = None
+        """Calcule le solde net (Dépôts - [Retraits + Transferts])."""
+        conn = self._get_connection()
         try:
-            conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             query = """
                 SELECT 
@@ -73,52 +78,34 @@ class UserAccount:
             cursor.execute(query)
             res = cursor.fetchone()[0]
             return float(res) if res else 0.0
-        finally:
-            if conn and conn.is_connected(): conn.close()
+        finally: conn.close()
 
     def process_transaction(self, ref, desc, montant, date, t_type, cat="Autre"):
-        conn = None
+        """Enregistre une nouvelle transaction."""
+        conn = self._get_connection()
         try:
-            conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
-            query = "INSERT INTO transaction (reference, description, montant, date, type, categorie) VALUES (%s, %s, %s, %s, %s, %s)"
-            cursor.execute(query, (ref, desc, montant, date, t_type, cat))
+            cursor.execute("INSERT INTO transaction (reference, description, montant, date, type, categorie) VALUES (%s, %s, %s, %s, %s, %s)",
+                           (ref, desc, montant, date, t_type, cat))
             conn.commit()
             return True
-        finally:
-            if conn and conn.is_connected(): conn.close()
+        finally: conn.close()
 
-    def get_filtered_transactions(self, t_type="Tous", date_debut=None, date_fin=None, tri_montant=None):
-        conn = None
+    def get_filtered_transactions(self):
+        """Récupère toutes les transactions pour le traitement côté Dashboard."""
+        conn = self._get_connection()
         try:
-            conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
-            query = "SELECT date, description, montant, type, categorie FROM transaction WHERE 1=1"
-            params = []
-
-            if t_type != "Tous":
-                query += " AND type = %s"; params.append(t_type)
-            if date_debut and date_fin:
-                query += " AND date BETWEEN %s AND %s"; params.append(date_debut); params.append(date_fin)
-
-            if tri_montant in ["ASC", "DESC"]:
-                query += f" ORDER BY montant {tri_montant}"
-            else:
-                query += " ORDER BY id DESC"
-
-            cursor.execute(query, params)
+            cursor.execute("SELECT date, description, montant, type, categorie FROM transaction ORDER BY id DESC")
             return cursor.fetchall()
-        finally:
-            if conn and conn.is_connected(): conn.close()
+        finally: conn.close()
 
     def get_stats_by_category(self):
-        """Inclut les transferts dans les stats pour une vision globale des sorties d'argent."""
-        conn = None
+        """Agrège les dépenses par catégorie pour le graphique Matplotlib."""
+        conn = self._get_connection()
         try:
-            conn = mysql.connector.connect(**self.db_config)
             cursor = conn.cursor()
             query = "SELECT categorie, SUM(montant) FROM transaction WHERE type IN ('retrait', 'transfert') GROUP BY categorie"
             cursor.execute(query)
             return cursor.fetchall()
-        finally:
-            if conn and conn.is_connected(): conn.close()
+        finally: conn.close()
