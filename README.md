@@ -1,43 +1,75 @@
-# 💰 Lancement
-python main.py
+# 💰 Budget Buddy Pro - Assistant de Gestion Financière
 
-Compte Test : 
-email : un.deux@test.com
-mot de passe : Azertyuiop@.1
+**Budget Buddy Pro** est une application Desktop développée en Python (Tkinter) permettant de suivre ses finances personnelles de manière sécurisée et intuitive. L'application communique avec une base de données **MySQL** et offre des outils d'analyse visuelle.
 
-## 🚀 Récapitulatif des Fonctionnalités : Budget Buddy Pro
+## 🚀 Fonctionnalités Clés
 
-### 1. 🔐 Sécurité et Gestion des Comptes
-* **Système d'Authentification :** Connexion sécurisée liée à l'e-mail de l'utilisateur.
-* **Sessions Personnalisées :** L'application identifie l'utilisateur connecté et charge uniquement ses données propres (via `user_email`).
-* **Déconnexion Sécurisée :** Bouton de déconnexion rapide avec retour à l'écran d'accueil.
+### 1. Gestion des Utilisateurs & Sécurité
+* **Authentification Sécurisée** : Système de Login/Inscription avec gestion des sessions.
+* **Protection des Données** : Implémentation d'un hachage **SHA-256** combiné à un **Sel (Salt)** unique par utilisateur et un **Poivre (Pepper)** global.
+* **Validation de Force** : Contrôle strict des mots de passe (10 caractères, Majuscules, Chiffres, Caractères spéciaux).
+* **Session Persistante** : Option "Se souvenir de moi" (stockage sécurisé de l'identifiant uniquement).
 
-### 2. 💰 Gestion des Opérations Financières
-* **Saisie Intuitive :** Formulaire complet permettant d'enregistrer :
-    * La **Description** de l'achat.
-    * Le **Montant** (avec gestion des nombres décimaux).
-    * Le **Type d'opération** (Retrait, Dépôt, Transfert).
-    * La **Catégorie** (Loisir, Repas, Facture, Salaire, Autre).
-* **Identifiants Uniques :** Génération automatique d'un code de référence unique (`UUID`) pour chaque transaction afin d'éviter les doublons.
+### 2. Tableau de Bord (Dashboard)
+* **Vue d'ensemble** : Affichage dynamique du solde en temps réel (calculé via SQL).
+* **Gestion des Opérations** : Formulaire complet pour ajouter des **Dépôts**, **Retraits** ou **Transferts**.
+* **Historique Intelligent** : Liste détaillée des transactions avec code couleur par type (Vert pour les gains, Rouge pour les dépenses).
 
-### 3. 📊 Visualisation et Analyse (Data Viz)
-* **Tableau de Bord Dynamique :** Affichage en temps réel du solde total du compte.
-* **Graphique Circulaire (Matplotlib) :** Génération automatique d'un graphique montrant la répartition des dépenses par catégorie pour aider l'utilisateur à comprendre où va son argent.
-* **Historique des Transactions :** Tableau (`Treeview`) listant les 15 dernières opérations avec un code couleur intelligent :
-    * **Vert** pour les revenus (dépôts).
-    * **Rouge** pour les dépenses (retraits).
-    * **Bleu** pour les transferts.
+### 3. Analyse & Data Visualization
+* **Graphique Circulaire (Pie Chart)** : Visualisation de la répartition des dépenses par catégorie (Loisir, Repas, Factures, etc.) via **Matplotlib**.
+* **Système de Filtres Avancé** : 
+    * Filtrage par type de transaction.
+    * Filtrage par catégorie.
+    * Recherche par plage de dates.
+    * Tri par montant (croissant/décroissant) ou par date.
 
-### 4. 📥 Exportation et Portabilité
-* **Export CSV Professionnel :** Bouton dédié permettant de générer un relevé bancaire complet au format `.csv`.
-* **Compatibilité Excel :** Encodage spécifique (`utf-8-sig`) pour garantir que les symboles (€) et les accents s'affichent parfaitement dans Excel.
+### 4. Portabilité des Données
+* **Export CSV** : Possibilité d'exporter l'historique filtré au format Excel/CSV pour un traitement externe.
 
-### 5. 🔔 Système de Notifications et Alertes
-* **Alerte Découvert :** Notification automatique si le solde devient négatif.
-* **Confirmations :** Messages de succès lors de l'exportation des données.
-* **Gestion des Erreurs :** Alertes en cas de saisie de données invalides ou de champs vides.
+---
 
-### 6. 🎨 Expérience Utilisateur (UX/UI)
-* **Design Moderne :** Interface épurée inspirée des tableaux de bord actuels (couleurs bleu nuit, turquoise et blanc cassé).
-* **Interactivité (Hover) :** Effets visuels au survol de la souris sur tous les boutons pour une sensation de fluidité.
-* **Fermeture Propre :** Code optimisé pour éviter les messages d'erreur dans le terminal lors de la fermeture de l'application.
+## 🛠️ Architecture Technique
+
+L'application repose sur une architecture **modulaire** pour séparer les responsabilités :
+
+| Fichier | Rôle |
+| :--- | :--- |
+| `main.py` | Point d'entrée, gestion du Login et du routage. |
+| `dashboard.py` | Interface principale et logique des filtres. |
+| `user_account.py` | Moteur SQL (Requêtes CRUD, calculs de solde). |
+| `security.py` | Gestionnaire de hachage et vérification cryptographique. |
+| `budget_chart.py` | Module de rendu graphique Matplotlib. |
+| `action.py` | Script de tests unitaires automatisés. |
+
+
+
+---
+
+## 📦 Installation
+
+1. **Cloner le dépôt** :
+   ```bash
+   git clone https://github.com/ton-pseudo/budget-buddy.git
+   ```
+2. **Installer les dépendances** :
+   ```bash
+   pip install mysql-connector-python matplotlib
+   ```
+3. **Configurer la base de données** :
+   * Importer le fichier `database.sql` dans votre serveur MySQL (WAMP/XAMPP).
+   * Vérifier les identifiants dans `user_account.py`.
+
+4. **Lancer l'application** :
+   ```bash
+   python main.py
+   ```
+
+---
+
+## 🧪 Tests
+Pour vérifier l'intégrité du système (Calculs, Sécurité, SQL), lancez le script de test :
+```bash
+python action.py
+```
+
+---
