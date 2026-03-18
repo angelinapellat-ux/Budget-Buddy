@@ -40,6 +40,7 @@ L'application repose sur une architecture **modulaire** pour séparer les respon
 | `security.py` | Gestionnaire de hachage et vérification cryptographique. |
 | `budget_chart.py` | Module de rendu graphique Matplotlib. |
 | `action.py` | Script de tests unitaires automatisés. |
+| `seed_data.py` | Script de générations de contenu pour la table transaction. |
 
 
 
