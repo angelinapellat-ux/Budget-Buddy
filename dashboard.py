@@ -162,7 +162,8 @@ class DashboardWindow(tk.Toplevel):
             )
             tk.OptionMenu(rf2, self.vars[k], *opts).pack(side="left", padx=5)
 
-        self.btn(
+        # Cherche cette ligne vers la ligne 155
+        self.save_btn = self.btn(
             form, "ENREGISTRER", self.save, "#2DCE89", "#24A46D", side="top", fill="x"
         )
 
@@ -218,6 +219,7 @@ class DashboardWindow(tk.Toplevel):
         return f
 
     def refresh_all(self):
+        """Rafraîchit le solde, le tableau des transactions et les graphiques."""
         # 1. Gestion du Solde
         try:
             bal = self.user.get_balance()
@@ -232,7 +234,7 @@ class DashboardWindow(tk.Toplevel):
                     f"Attention ! Votre solde est négatif ({bal:.2f} €).",
                 )
         except Exception as e:
-            print(f"Erreur Solde: {e}")
+            print(f"DEBUG - Erreur Solde: {e}")
 
         # 2. Récupération et Filtrage des données (Tableau)
         try:
@@ -240,56 +242,68 @@ class DashboardWindow(tk.Toplevel):
             if not data:
                 data = []
 
+            # Application des filtres de l'interface
             filtered = [
                 t
                 for t in data
-                if (self.f_type.get() == "Tous Types" or t[3] == self.f_type.get())
-                and (
-                    self.f_cat.get() == "Toutes Catégories" or t[4] == self.f_cat.get()
-                )
+                if (self.f_type.get() == "Tous Types" or t[3].lower() == self.f_type.get().lower())
+                and (self.f_cat.get() == "Toutes Catégories" or t[4] == self.f_cat.get())
                 and (not self.f_start.get() or str(t[0]) >= self.f_start.get())
                 and (not self.f_end.get() or str(t[0]) <= self.f_end.get())
             ]
 
-            # 3. Tri
+            # 3. Tri des données filtrées
             s = self.f_sort.get()
             if "Montant" in s:
+                # On trie par la valeur absolue du montant (index 2)
                 filtered.sort(key=lambda x: float(x[2]), reverse=("Décroissant" in s))
 
             # 4. Mise à jour du Tableau (Treeview)
             self.tree.delete(*self.tree.get_children())
             for t in filtered:
                 try:
-                    sig = "+" if str(t[3]).lower() == "dépôts" else "-"
+                    # Gestion du signe selon le type
+                    type_str = str(t[3]).lower()
+                    sig = "+" if type_str == "dépôts" else "-"
+                    
+                    # Sécurité sur la référence (index 5)
                     ref = t[5] if len(t) > 5 else "N/A"
+                    
                     self.tree.insert(
                         "",
                         "end",
                         values=(
-                            t[0],
-                            t[1],
-                            f"{sig}{float(t[2]):.2f} €",
-                            str(t[3]).upper(),
-                            ref,
+                            t[0],                               # Date
+                            t[1],                               # Description
+                            f"{sig}{float(t[2]):.2f} €",       # Montant formaté
+                            type_str.upper(),                   # Type
+                            ref,                                # Référence
                         ),
-                        tags=(str(t[3]).lower(),),
+                        tags=(type_str,),
                     )
                 except Exception as row_err:
-                    print(f"Erreur ligne tableau: {row_err}")
+                    print(f"DEBUG - Erreur sur une ligne du tableau: {row_err}")
+                    
         except Exception as e:
-            print(f"Erreur Tableau: {e}")
-            messagebox.showerror("Erreur", "Impossible de charger la liste.")
+            print(f"DEBUG - Erreur Tableau: {e}")
+            messagebox.showerror("Erreur", "Impossible de charger la liste des transactions.")
 
-        # 5. Mise à jour du Graphique (Camembert + Texte Mensuel)
+        # 5. Mise à jour du Graphique (Camembert + Menu Déroulant Mensuel)
         try:
-            # On récupère les deux sources de données
+            # Récupération des statistiques depuis user_account.py
             stats_categories = self.user.get_stats_by_category()
             stats_mensuelles = self.user.get_stats_monthly()
             
-            # On envoie les deux à la vue graphique modifiée
-            self.chart_view.update_chart(stats_categories, stats_mensuelles)
+            # --- LOG DE DÉBOGAGE ---
+            # Si tu ne vois pas tes mois, regarde ce que ce print affiche dans ta console :
+            print(f"DEBUG - Stats mensuelles reçues de la BDD : {stats_mensuelles}")
+            
+            # Envoi des données à la classe BudgetChart
+            if hasattr(self, 'chart_view'):
+                self.chart_view.update_chart(stats_categories, stats_mensuelles)
+                
         except Exception as e:
-            print(f"Erreur lors de la mise à jour du graphique : {e}")
+            print(f"DEBUG - Erreur lors de la mise à jour du graphique : {e}")
 
     def save(self):
         # 1. Récupération des valeurs
@@ -343,7 +357,7 @@ class DashboardWindow(tk.Toplevel):
     def reset_filters(self):
         self.f_type.set("Tous Types")
         self.f_cat.set("Toutes Catégories")
-        self.f_sort.set("Date (Récents)")
+        self.f_sort.set("Montant")
         self.f_start.delete(0, "end")
         self.f_end.delete(0, "end")
         self.refresh_all()

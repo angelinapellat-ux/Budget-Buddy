@@ -104,7 +104,6 @@ class UserAccount:
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            # AJOUT DU WHERE user_email = %s
             query = """
                 SELECT 
                 COALESCE(SUM(CASE WHEN type = 'dépôts' THEN montant ELSE 0 END), 0) - 
@@ -113,8 +112,15 @@ class UserAccount:
                 WHERE user_email = %s
             """
             cursor.execute(query, (self.email,))
-            res = cursor.fetchone()[0]
-            return float(res) if res else 0.0
+            res = cursor.fetchone()
+
+            # Sécurité : si res est None ou res[0] est None, on renvoie 0.0
+            if res and res[0] is not None:
+                return float(res[0])
+            return 0.0
+        except Exception as e:
+            print(f"❌ Erreur Balance : {e}")
+            return 0.0
         finally:
             conn.close()
 
@@ -171,19 +177,28 @@ class UserAccount:
             conn.close()
 
     def get_stats_monthly(self):
-        """Regroupe les dépenses par mois pour l'utilisateur connecté."""
+        """Regroupe TOUS les mouvements par mois (dépenses et revenus)."""
         conn = self._get_connection()
         try:
             cursor = conn.cursor()
-            # CORRECTION : user_email au lieu de email_user
+            # On retire le filtre 'type IN (...)' pour inclure les dépôts
             query = """
                 SELECT DATE_FORMAT(date, '%Y-%m') as mois, SUM(montant) 
                 FROM transaction 
-                WHERE type IN ('retrait', 'transfert') AND user_email = %s
-                GROUP BY mois ORDER BY mois ASC
+                WHERE user_email = %s
+                GROUP BY mois 
+                ORDER BY mois DESC
             """
             cursor.execute(query, (self.email,))
-            return cursor.fetchall()
+            res = cursor.fetchall()
+
+            print(f"\n--- TEST FINAL BDD ---")
+            print(f"Résultats trouvés: {res}")
+
+            return res
+        except Exception as e:
+            print(f"Erreur SQL: {e}")
+            return []
         finally:
             conn.close()
 
@@ -201,6 +216,7 @@ class UserAccount:
             return False
         finally:
             conn.close()
+
     def update_transaction(self, ref, desc, montant, t_type, cat):
         """Met à jour une transaction existante."""
         conn = self._get_connection()
