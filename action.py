@@ -24,7 +24,7 @@ print("-" * 40)
 print(f"Tentative de connexion : {email}")
 if UserAccount.login(email, pwd):
     print("[SUCCÈS] Authentification réussie.")
-    
+
     # Init de l'objet utilisateur pour les opérations
     user_test = UserAccount(email=email)
     date_now = datetime.now().strftime("%Y-%m-%d")
@@ -34,7 +34,7 @@ if UserAccount.login(email, pwd):
     tests = [
         (str(uuid.uuid4())[:8], "Dépôt Salaire", 2500.0, "dépôts", "Salaire"),
         (str(uuid.uuid4())[:8], "Courses", 75.50, "retrait", "Repas"),
-        (str(uuid.uuid4())[:8], "Épargne", 200.0, "transfert", "Autre")
+        (str(uuid.uuid4())[:8], "Épargne", 200.0, "transfert", "Autre"),
     ]
 
     print("\nSimulation de transactions...")
@@ -46,9 +46,9 @@ if UserAccount.login(email, pwd):
     solde = user_test.get_balance()
     print(f"\n--- RÉSULTAT DU CALCUL SQL ---")
     print(f"Solde en base de données : {solde:.2f} €")
-    
+
     # On vérifie si la logique SQL SUM(dépôts) - SUM(retraits+transferts) fonctionne
-    if solde > 0: # On vérifie simplement qu'il y a de l'argent suite au test
+    if solde > 0:  # On vérifie simplement qu'il y a de l'argent suite au test
         print("✅ TEST RÉUSSI : La logique comptable est validée !")
     else:
         print("⚠️ ERREUR : Le solde ne correspond pas aux attentes.")

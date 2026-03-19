@@ -94,16 +94,40 @@ class BudgetBuddyApp(tk.Tk):
             messagebox.showerror("Accès refusé", "Identifiants incorrects")
 
     def handle_register(self):
-        data = [self.n_reg.get().strip(), self.pr_reg.get().strip(), self.em_reg.get().strip(), self.pw_reg.get().strip()]
-        if not all(data): return messagebox.showwarning("Erreur", "Champs incomplets")
+        # 1. Récupération des données (data[2] est l'email)
+        data = [
+            self.n_reg.get().strip(), 
+            self.pr_reg.get().strip(), 
+            self.em_reg.get().strip(), 
+            self.pw_reg.get().strip()
+        ]
 
-        if not UserAccount.validate_password_strength(data[3]):
-            return messagebox.showwarning("Sécurité", "Mot de passe trop faible")
-            
+        # 2. Vérification "Champs vides"
+        if not all(data): 
+            return messagebox.showwarning("Erreur", "Tous les champs sont obligatoires.")
+
+        # 3. VERIFICATION EMAIL (La partie qui te manquait)
+        if not UserAccount.validate_email(data[2]):
+            return messagebox.showerror("Format Invalide", "L'adresse email n'est pas correcte (ex: nom@domaine.com).")
+
+        # 4. Vérification détaillée du Mot de Passe
+        pwd = data[3]
+        if len(pwd) < 10:
+            return messagebox.showwarning("Sécurité", "Le mot de passe doit faire au moins 10 caractères.")
+        if not any(c.isupper() for c in pwd):
+            return messagebox.showwarning("Sécurité", "Ajoutez au moins une MAJUSCULE.")
+        if not any(c.isdigit() for c in pwd):
+            return messagebox.showwarning("Sécurité", "Ajoutez au moins un CHIFFRE.")
+        # Utilise re.search pour les caractères spéciaux si tu as importé 're'
+        import re
+        if not re.search(r"[!@#$%^&*]", pwd):
+            return messagebox.showwarning("Sécurité", "Ajoutez un caractère spécial (!@#$%^&*).")
+
+        # 5. Tentative d'inscription
         if UserAccount(*data).register():
-            messagebox.showinfo("Succès", "Compte créé !"); self.show_login()
+            messagebox.showinfo("Succès", "Compte créé avec succès !"); self.show_login()
         else:
-            messagebox.showerror("Erreur", "Email déjà utilisé")
+            messagebox.showerror("Erreur", "Cet email est déjà utilisé par un autre utilisateur.")
 
     def save_creds(self, em):
         with open(CONFIG_FILE, "w") as f: json.dump({"email": em}, f)
