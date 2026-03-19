@@ -1,3 +1,4 @@
+# Important 
 Changer les identifiants de la base de donnée pour que le code fonctionne :
 ligne 12 et 51 pour user_account.py.
 ligne 6 pour seed_data.py
