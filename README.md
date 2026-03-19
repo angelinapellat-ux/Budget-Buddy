@@ -2,6 +2,9 @@ Changer les identifiants de la base de donnée pour que le code fonctionne :
 ligne 12 et 51 pour user_account.py.
 ligne 6 pour seed_data.py
 N'oublié pas d'installer les dépendances !
+Supprimer l'adresse enregistré dans le fichier json car elle n'existe pas dans votre base de donnée.
+Créer un compte et la connexion se fera sans soucis.
+
 # 💰 Budget Buddy Pro - Assistant de Gestion Financière
 
 **Budget Buddy Pro** est une application Desktop développée en Python (Tkinter) permettant de suivre ses finances personnelles de manière sécurisée et intuitive. L'application communique avec une base de données **MySQL** et offre des outils d'analyse visuelle.
