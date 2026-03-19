@@ -4,7 +4,7 @@ import json, os
 from user_account import UserAccount
 from dashboard import DashboardWindow
 
-CONFIG_FILE = ".session_data.json"
+CONFIG_FILE = "session_data.json"
 
 class BudgetBuddyApp(tk.Tk):
     def __init__(self):
