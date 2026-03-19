@@ -1,3 +1,7 @@
+Changer les identifiants de la base de donnée pour que le code fonctionne :
+ligne 12 et 51 pour user_account.py.
+ligne 6 pour seed_data.py
+N'oublié pas d'installer les dépendances !
 # 💰 Budget Buddy Pro - Assistant de Gestion Financière
 
 **Budget Buddy Pro** est une application Desktop développée en Python (Tkinter) permettant de suivre ses finances personnelles de manière sécurisée et intuitive. L'application communique avec une base de données **MySQL** et offre des outils d'analyse visuelle.
