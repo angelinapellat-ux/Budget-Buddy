@@ -1,424 +1,190 @@
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
-import uuid, csv
-from datetime import datetime
+import uuid, csv, datetime
 from user_account import UserAccount
 from budgetchart import BudgetChart
-
 
 class DashboardWindow(tk.Toplevel):
     def __init__(self, master, user_email):
         super().__init__(master)
-        self.title("Budget Buddy Assistant")
-        self.geometry("1100x850")
+        self.title("Budget Buddy Assistant"); self.geometry("1100x850")
         self.user = UserAccount(email=user_email)
-        self.configure(bg="#F8F9FE")
-        self.setup_styles()
-        self.build_ui()
-        self.refresh_all()
-        self.editing_ref = None
+        self.configure(bg="#F8F9FE"); self.editing_ref = None
+        self.setup_styles(); self.build_ui(); self.refresh_all()
+
     def setup_styles(self):
-        s = ttk.Style(self)
-        s.theme_use("clam")
+        s = ttk.Style(self); s.theme_use("clam")
         s.configure("Treeview", background="white", rowheight=35, font=("Segoe UI", 10))
-        s.configure(
-            "Treeview.Heading", background="#F6F9FC", font=("Segoe UI", 9, "bold")
-        )
+        s.configure("Treeview.Heading", background="#F6F9FC", font=("Segoe UI", 9, "bold"))
 
     def btn(self, master, text, cmd, bg, hover="#324CBB", side=None, fill=None):
-        """Utilitaire pour créer des boutons stylisés rapidement."""
-        b = tk.Button(
-            master,
-            text=text,
-            command=cmd,
-            bg=bg,
-            fg="white",
-            font=("Segoe UI", 9, "bold"),
-            relief="flat",
-            cursor="hand2",
-            padx=15,
-        )
-        b.bind("<Enter>", lambda e: b.config(bg=hover))
-        b.bind("<Leave>", lambda e: b.config(bg=bg))
-        if side:
-            b.pack(side=side, padx=5, pady=5, fill=fill)
+        b = tk.Button(master, text=text, command=cmd, bg=bg, fg="white", font=("Segoe UI", 9, "bold"), 
+                      relief="flat", cursor="hand2", padx=15)
+        b.bind("<Enter>", lambda e: b.config(bg=hover)); b.bind("<Leave>", lambda e: b.config(bg=bg))
+        if side: b.pack(side=side, padx=5, pady=5, fill=fill)
         return b
 
     def build_ui(self):
-        # Header
-        h = tk.Frame(self, bg="#32325D", height=60)
-        h.pack(fill="x")
-        tk.Label(
-            h,
-            text="TABLEAU DE BORD",
-            fg="white",
-            bg="#32325D",
-            font=("Segoe UI", 12, "bold"),
-        ).pack(side="left", padx=20)
-        self.btn(h, "DÉCONNEXION", self.logout, "#F5365C", "#D32F2F", side="right")
+        # Header & Container
+        h = tk.Frame(self, bg="#32325D", height=60); h.pack(fill="x")
+        tk.Label(h, text="TABLEAU DE BORD", fg="white", bg="#32325D", font=("Segoe UI", 12, "bold")).pack(side="left", padx=20)
+        self.btn(h, "DÉCONNEXION", self.logout, "#F5365C", "#D32F2F", "right")
+        cnt = tk.Frame(self, bg="#F8F9FE"); cnt.pack(fill="both", expand=1, padx=20, pady=20)
+        left = tk.Frame(cnt, bg="#F8F9FE"); left.pack(side="left", fill="both", expand=1, padx=(0, 10))
+        # Sections UI
+        self._ui_solde(left); self._ui_filters(left); self._ui_form(left); self._ui_table(left)
+        self.chart_view = BudgetChart(cnt, highlightthickness=1, highlightbackground="#E9ECEF")
+        self.chart_view.pack(side="right", fill="both", expand=1, padx=(10, 0))
 
-        cnt = tk.Frame(self, bg="#F8F9FE")
-        cnt.pack(fill="both", expand=True, padx=20, pady=20)
-        left = tk.Frame(cnt, bg="#F8F9FE")
-        left.pack(side="left", fill="both", expand=True, padx=(0, 10))
+    def _ui_solde(self, p):
+        f = tk.Frame(p, bg="white", padx=20, pady=15, highlightthickness=1, highlightbackground="#E9ECEF")
+        f.pack(fill="x", pady=(0, 15))
+        tk.Label(f, text="SOLDE ACTUEL", bg="white", fg="#8898AA", font=("Segoe UI", 9, "bold")).pack(anchor="w")
+        self.bal_lbl = tk.Label(f, text="-- €", bg="white", font=("Segoe UI", 28, "bold")); self.bal_lbl.pack(anchor="w")
 
-        # Solde Card
-        card = tk.Frame(
-            left,
-            bg="white",
-            padx=20,
-            pady=15,
-            highlightthickness=1,
-            highlightbackground="#E9ECEF",
-        )
-        card.pack(fill="x", pady=(0, 15))
-        tk.Label(
-            card,
-            text="SOLDE ACTUEL",
-            bg="white",
-            fg="#8898AA",
-            font=("Segoe UI", 9, "bold"),
-        ).pack(anchor="w")
-        self.bal_lbl = tk.Label(
-            card, text="-- €", bg="white", font=("Segoe UI", 28, "bold")
-        )
-        self.bal_lbl.pack(anchor="w")
-
-        # Filtres
-        fb = tk.LabelFrame(
-            left,
-            text="🔍 FILTRES",
-            bg="white",
-            font=("Segoe UI", 8, "bold"),
-            fg="#8898AA",
-            padx=10,
-            pady=5,
-        )
+    def _ui_filters(self, p):
+        fb = tk.LabelFrame(p, text="🔍 FILTRES & TRI", bg="white", font=("Segoe UI", 8, "bold"), fg="#8898AA", padx=10, pady=5)
         fb.pack(fill="x", pady=(0, 15))
-        self.f_type, self.f_cat, self.f_sort = (
-            tk.StringVar(value="Tous Types"),
-            tk.StringVar(value="Toutes Catégories"),
-            tk.StringVar(value="Montant"),
-        )
-
-        r1 = tk.Frame(fb, bg="white")
-        r1.pack(fill="x")
-        for v, opt in [
-            (self.f_type, ["Tous Types", "retrait", "dépôts", "transfert"]),
-            (
-                self.f_cat,
-                ["Toutes Catégories", "Loisir", "Repas", "Facture", "Salaire", "Autre"],
-            ),
-            (self.f_sort, ["Montant (Croissant)", "Montant (Décroissant)"]),
-        ]:  # <--- Changé ici
-            tk.OptionMenu(r1, v, *opt).pack(side="left", padx=2)
-
-        r2 = tk.Frame(fb, bg="white")
-        r2.pack(fill="x", pady=5)
+        # Variables des filtres
+        self.f_type = tk.StringVar(value="Tous Types")
+        self.f_cat = tk.StringVar(value="Toutes Catégories")
+        self.f_sort = tk.StringVar(value="Montant") # Valeur par défaut
+        r1 = tk.Frame(fb, bg="white"); r1.pack(fill="x")
+        # Menus déroulants
+        tk.OptionMenu(r1, self.f_type, "Tous Types", "retrait", "dépôts", "transfert").pack(side="left", padx=2)
+        tk.OptionMenu(r1, self.f_cat, "Toutes Catégories", "Loisir", "Repas", "Facture", "Salaire", "Autre").pack(side="left", padx=2)
+        tk.OptionMenu(r1, self.f_sort, "Montant", "Montant (Croissant)", "Montant (Décroissant)").pack(side="left", padx=2)
+        r2 = tk.Frame(fb, bg="white"); r2.pack(fill="x", pady=5)
         self.f_start, self.f_end = tk.Entry(r2, width=12), tk.Entry(r2, width=12)
-        for t, e in [("Du:", self.f_start), ("Au:", self.f_end)]:
-            tk.Label(r2, text=t, bg="white").pack(side="left", padx=2)
-            e.pack(side="left", padx=2)
+        tk.Label(r2, text="Du:", bg="white").pack(side="left"); self.f_start.pack(side="left", padx=2)
+        tk.Label(r2, text="Au:", bg="white").pack(side="left"); self.f_end.pack(side="left", padx=2)
+        # Bouton Filtrer
         self.btn(r2, "FILTRER", self.refresh_all, "#5E72E4", side="left")
-        self.btn(
-            r2, "RESET", self.reset_filters, "#EDF2F7", "#CBD5E0", side="left"
-        ).config(fg="#4A5568")
+        # NOUVEAU : Bouton pour réinitialiser uniquement le TRI (le remettre par défaut)
+        self.btn(r2, "🔄 RÉCENT", self.reset_sort, "#2DCE89", "#28B377", side="left")
+        # Bouton Reset complet
+        self.btn(r2, "RESET TOUT", self.reset_filters, "#EDF2F7", "#CBD5E0", "left").config(fg="#4A5568")
 
-        # Formulaire
-        form = tk.LabelFrame(
-            left,
-            text="➕ OPÉRATION",
-            bg="white",
-            font=("Segoe UI", 8, "bold"),
-            fg="#8898AA",
-            padx=20,
-            pady=10,
-        )
-        form.pack(fill="x")
-        self.vars = {
-            k: tk.StringVar(value=v)
-            for k, v in [
-                ("desc", ""),
-                ("amt", ""),
-                ("type", "retrait"),
-                ("cat", "Loisir"),
-            ]
-        }
-
-        rf1 = tk.Frame(form, bg="white")
-        rf1.pack(fill="x")
-        self.create_entry(rf1, "DESCRIPTION", self.vars["desc"], 20).pack(
-            side="left", padx=(0, 10)
-        )
+    def _ui_form(self, p):
+        f = tk.LabelFrame(p, text="➕ OPÉRATION", bg="white", font=("Segoe UI", 8, "bold"), fg="#8898AA", padx=20, pady=10)
+        f.pack(fill="x")
+        self.vars = {k: tk.StringVar(value=v) for k,v in [("desc",""), ("amt",""), ("type","retrait"), ("cat","Loisir")]}
+        rf1 = tk.Frame(f, bg="white"); rf1.pack(fill="x")
+        self.create_entry(rf1, "DESCRIPTION", self.vars["desc"], 20).pack(side="left", padx=(0, 10))
         self.create_entry(rf1, "MONTANT", self.vars["amt"], 10).pack(side="left")
-
-        rf2 = tk.Frame(form, bg="white")
-        rf2.pack(fill="x", pady=5)
+        rf2 = tk.Frame(f, bg="white"); rf2.pack(fill="x", pady=5)
         for k in ["type", "cat"]:
-            opts = (
-                ["retrait", "dépôts", "transfert"]
-                if k == "type"
-                else ["Loisir", "Repas", "Facture", "Salaire", "Autre"]
-            )
-            tk.OptionMenu(rf2, self.vars[k], *opts).pack(side="left", padx=5)
+            o = ["retrait", "dépôts", "transfert"] if k == "type" else ["Loisir", "Repas", "Facture", "Salaire", "Autre"]
+            tk.OptionMenu(rf2, self.vars[k], *o).pack(side="left", padx=5)
+        self.save_btn = self.btn(f, "ENREGISTRER", self.save, "#2DCE89", "#24A46D", "top", "x")
 
-        # Cherche cette ligne vers la ligne 155
-        self.save_btn = self.btn(
-            form, "ENREGISTRER", self.save, "#2DCE89", "#24A46D", side="top", fill="x"
-        )
-
-        # Tableau
-        self.tree = ttk.Treeview(
-            left, columns=("D", "De", "M", "T", "R"), show="headings", height=8
-        )
-        for c, h in zip(
-            ("D", "De", "M", "T", "R"), ("DATE", "DESC", "MONTANT", "TYPE", "REF")
-        ):
-            width = 120 if c == "R" else 90  # Plus large pour la référence
-            self.tree.heading(c, text=h)
-            self.tree.column(c, width=width, anchor="center")
-        self.tree.pack(fill="both", expand=True, pady=10)
-        for t, col in [
-            ("dépôts", "#2DCE89"),
-            ("retrait", "#F5365C"),
-            ("transfert", "#5E72E4"),
-        ]:
-            self.tree.tag_configure(t, foreground=col)
-
-        self.btn(
-            left,
-            "📥 EXPORTER CSV",
-            self.export,
-            "#11CDEF",
-            "#05B6D4",
-            side="top",
-            fill="x",
-        )
-        # On lie le clic droit (Button-3 sur Windows/Linux, Button-2 sur Mac)
+    def _ui_table(self, p):
+        # Définition des 6 colonnes (ajout de 'C' pour Catégorie)
+        self.tree = ttk.Treeview(p, columns=("D", "De", "M", "T", "C", "R"), show="headings", height=8)
+        cols = [("D","DATE"), ("De","DESC"), ("M","MONTANT"), ("T","TYPE"), ("C","CATÉGORIE"), ("R","REF")]
+        for i, t in cols:
+            self.tree.heading(i, text=t)
+            # Largeur plus grande pour Description et Catégorie
+            w = 150 if i in ["De", "C"] else 90
+            self.tree.column(i, width=w, anchor="center")
+        self.tree.pack(fill="both", expand=1, pady=10)
+        # Couleurs par type
+        [self.tree.tag_configure(t, foreground=c) for t,c in [("dépôts","#2DCE89"), ("retrait","#F5365C"), ("transfert","#5E72E4")]]
+        self.btn(p, "📥 EXPORTER CSV", self.export, "#11CDEF", "#05B6D4", "top", "x")
         self.tree.bind("<Button-3>", self.on_right_click)
         self.tree.bind("<Double-1>", self.load_for_edit)
-        # Graphique
-        self.chart_view = BudgetChart(
-            cnt, highlightthickness=1, highlightbackground="#E9ECEF"
-        )
-        self.chart_view.pack(side="right", fill="both", expand=True, padx=(10, 0))
 
-    def create_entry(self, master, label, var, width):
-        f = tk.Frame(master, bg="white")
-        tk.Label(
-            f, text=label, bg="white", fg="#8898AA", font=("Segoe UI", 7, "bold")
-        ).pack(anchor="w")
-        tk.Entry(
-            f,
-            textvariable=var,
-            width=width,
-            highlightthickness=1,
-            highlightbackground="#CAD1D7",
-            relief="flat",
-        ).pack(ipady=3)
+    def create_entry(self, m, l, v, w):
+        f = tk.Frame(m, bg="white")
+        tk.Label(f, text=l, bg="white", fg="#8898AA", font=("Segoe UI", 7, "bold")).pack(anchor="w")
+        tk.Entry(f, textvariable=v, width=w, highlightthickness=1, highlightbackground="#CAD1D7", relief="flat").pack(ipady=3)
         return f
 
     def refresh_all(self):
-        """Rafraîchit le solde, le tableau des transactions et les graphiques."""
-        # 1. Gestion du Solde
         try:
-            bal = self.user.get_balance()
-            bal = float(bal) if bal is not None else 0.0
-            self.bal_lbl.config(
-                text=f"{bal:.2f} €", fg="#F5365C" if bal < 0 else "#2DCE89"
-            )
-
-            if bal < 0:
-                messagebox.showwarning(
-                    "Alerte Découvert",
-                    f"Attention ! Votre solde est négatif ({bal:.2f} €).",
-                )
-        except Exception as e:
-            print(f"DEBUG - Erreur Solde: {e}")
-
-        # 2. Récupération et Filtrage des données (Tableau)
-        try:
-            data = self.user.get_filtered_transactions()
-            if not data:
-                data = []
-
-            # Application des filtres de l'interface
-            filtered = [
-                t
-                for t in data
-                if (self.f_type.get() == "Tous Types" or t[3].lower() == self.f_type.get().lower())
-                and (self.f_cat.get() == "Toutes Catégories" or t[4] == self.f_cat.get())
-                and (not self.f_start.get() or str(t[0]) >= self.f_start.get())
-                and (not self.f_end.get() or str(t[0]) <= self.f_end.get())
-            ]
-
-            # 3. Tri des données filtrées
-            s = self.f_sort.get()
-            if "Montant" in s:
-                # On trie par la valeur absolue du montant (index 2)
-                filtered.sort(key=lambda x: float(x[2]), reverse=("Décroissant" in s))
-
-            # 4. Mise à jour du Tableau (Treeview)
+            # 1. Solde
+            b = float(self.user.get_balance() or 0)
+            self.bal_lbl.config(text=f"{b:.2f} €", fg="#F5365C" if b < 0 else "#2DCE89")
+            if b < 0: messagebox.showwarning("Budget Buddy", f"Solde négatif : {b:.2f} €")
+            # 2. Récupération & Filtrage
+            data = self.user.get_filtered_transactions() or []
+            filt = []
+            f_type, f_cat = self.f_type.get().lower(), self.f_cat.get()
+            for t in data:
+                if (f_type != "tous types" and t[3].lower() != f_type): continue
+                if (f_cat != "Toutes Catégories" and t[4] != f_cat): continue
+                # (Ajouter ici vos filtres de dates f_start/f_end si besoin)
+                filt.append(t)
+            # 3. LOGIQUE DE TRI
+            s_val = self.f_sort.get()
+            if "Montant (Croissant)" in s_val:
+                filt.sort(key=lambda x: float(x[2]))
+            elif "Montant (Décroissant)" in s_val:
+                filt.sort(key=lambda x: float(x[2]), reverse=True)
+            # Si c'est "Date (Récent)", on ne fait RIEN, l'ordre SQL id DESC est conservé.
+            # 4. Remplissage tableau
             self.tree.delete(*self.tree.get_children())
-            for t in filtered:
-                try:
-                    # Gestion du signe selon le type
-                    type_str = str(t[3]).lower()
-                    sig = "+" if type_str == "dépôts" else "-"
-                    
-                    # Sécurité sur la référence (index 5)
-                    ref = t[5] if len(t) > 5 else "N/A"
-                    
-                    self.tree.insert(
-                        "",
-                        "end",
-                        values=(
-                            t[0],                               # Date
-                            t[1],                               # Description
-                            f"{sig}{float(t[2]):.2f} €",       # Montant formaté
-                            type_str.upper(),                   # Type
-                            ref,                                # Référence
-                        ),
-                        tags=(type_str,),
-                    )
-                except Exception as row_err:
-                    print(f"DEBUG - Erreur sur une ligne du tableau: {row_err}")
-                    
-        except Exception as e:
-            print(f"DEBUG - Erreur Tableau: {e}")
-            messagebox.showerror("Erreur", "Impossible de charger la liste des transactions.")
-
-        # 5. Mise à jour du Graphique (Camembert + Menu Déroulant Mensuel)
-        try:
-            # Récupération des statistiques depuis user_account.py
-            stats_categories = self.user.get_stats_by_category()
-            stats_mensuelles = self.user.get_stats_monthly()
-            
-            # --- LOG DE DÉBOGAGE ---
-            # Si tu ne vois pas tes mois, regarde ce que ce print affiche dans ta console :
-            print(f"DEBUG - Stats mensuelles reçues de la BDD : {stats_mensuelles}")
-            
-            # Envoi des données à la classe BudgetChart
-            if hasattr(self, 'chart_view'):
-                self.chart_view.update_chart(stats_categories, stats_mensuelles)
-                
-        except Exception as e:
-            print(f"DEBUG - Erreur lors de la mise à jour du graphique : {e}")
+            for t in filt:
+                sig = "+" if str(t[3]).lower() == "dépôts" else "-"
+                self.tree.insert("", "end", values=(
+                    t[0], t[1], f"{sig}{float(t[2]):.2f} €", 
+                    str(t[3]).upper(), t[4], t[5]
+                ), tags=(str(t[3]).lower(),))
+            # 5. Graphique
+            # On récupère toutes les transactions pour que le graphique puisse piocher dedans
+            all_tx = self.user.get_filtered_transactions()
+            # On envoie les 3 éléments au graphique
+            self.chart_view.update_chart(
+                self.user.get_stats_by_category(), 
+                self.user.get_stats_monthly(), 
+                all_tx
+            )
+        except Exception as e: print(f"Refresh Error: {e}")
 
     def save(self):
-        # 1. Récupération des valeurs
-        d = self.vars["desc"].get().strip()
-        a_str = self.vars["amt"].get().strip()
-        t_type = self.vars["type"].get()
-        cat = self.vars["cat"].get()
-
-        # 2. Vérification des champs vides
-        if not d or not a_str:
-            return messagebox.showwarning("Incomplet", "Veuillez remplir la description et le montant.")
-
-        # 3. Conversion du montant
+        d, a, t, c = [self.vars[k].get().strip() for k in ["desc", "amt", "type", "cat"]]
+        if not d or not a: return messagebox.showwarning("Incomplet", "Champs requis.")
         try:
-            montant_float = float(a_str)
-        except ValueError:
-            return messagebox.showerror("Erreur", "Le montant doit être un nombre valide.")
-
-        # --- LOGIQUE DE SAUVEGARDE ---
-        if hasattr(self, 'editing_ref') and self.editing_ref:
-            # MODE MODIFICATION
-            success = self.user.update_transaction(
-                self.editing_ref, d, montant_float, t_type, cat
-            )
-            # On réinitialise l'état du bouton et de la référence
-            self.editing_ref = None
-            self.save_btn.config(text="ENREGISTRER", bg="#2DCE89") # Retour au vert
-        else:
-            # MODE CRÉATION
-            ref_generee = str(uuid.uuid4())[:8]
-            date_du_jour = datetime.now().strftime("%Y-%m-%d")
-            success = self.user.process_transaction(
-                ref_generee, d, montant_float, date_du_jour, t_type, cat
-            )
-
-        # 5. Gestion du résultat
-        if success:
-            # Nettoyage du formulaire
-            self.vars["desc"].set("")
-            self.vars["amt"].set("")
-            
-            try:
-                # Appelle la nouvelle version de refresh_all (Camembert + Texte)
-                self.refresh_all()
-            except Exception as e:
-                print(f"Erreur lors du rafraîchissement : {e}")
-                messagebox.showerror("Erreur Interface", "Enregistré, mais l'affichage a planté.")
-        else:
-            messagebox.showerror("Erreur", "L'opération a échoué en base de données.")
+            if self.editing_ref:
+                self.user.update_transaction(self.editing_ref, d, float(a), t, c)
+                self.editing_ref = None; self.save_btn.config(text="ENREGISTRER", bg="#2DCE89")
+            else:
+                self.user.process_transaction(str(uuid.uuid4())[:8], d, float(a), datetime.datetime.now().strftime("%Y-%m-%d"), t, c)
+            self.vars["desc"].set(""); self.vars["amt"].set(""); self.refresh_all()
+        except: messagebox.showerror("Erreur", "Données invalides.")
 
     def reset_filters(self):
-        self.f_type.set("Tous Types")
-        self.f_cat.set("Toutes Catégories")
-        self.f_sort.set("Montant")
-        self.f_start.delete(0, "end")
-        self.f_end.delete(0, "end")
-        self.refresh_all()
+        self.f_type.set("Tous Types"); self.f_cat.set("Toutes Catégories"); self.f_sort.set("Montant")
+        self.f_start.delete(0, 'end'); self.f_end.delete(0, 'end'); self.refresh_all()
 
     def export(self):
         if p := filedialog.asksaveasfilename(defaultextension=".csv"):
             with open(p, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f, delimiter=";")
                 writer.writerow(["DATE", "DESCRIPTION", "MONTANT", "TYPE"])
-                for i in self.tree.get_children():
-                    writer.writerow(self.tree.item(i)["values"])
+                [writer.writerow(self.tree.item(i)["values"]) for i in self.tree.get_children()]
 
     def logout(self):
-        if messagebox.askyesno("Quitter", "Se déconnecter ?"):
-            self.master.deiconify()
-            self.destroy()
+        if messagebox.askyesno("Quitter", "Déconnexion ?"): self.master.deiconify(); self.destroy()
 
-    def on_right_click(self, event):
-        # On sélectionne la ligne sous le curseur
-        item_id = self.tree.identify_row(event.y)
-        if not item_id:
-            return
-
-        self.tree.selection_set(item_id)
-
-        # Création du menu surgissant
-        menu = tk.Menu(self, tearoff=0)
-        menu.add_command(
-            label="❌ Supprimer cette opération", command=self.confirm_delete
-        )
-        menu.post(event.x_root, event.y_root)
+    def on_right_click(self, e):
+        if iid := self.tree.identify_row(e.y):
+            self.tree.selection_set(iid); m = tk.Menu(self, tearoff=0)
+            m.add_command(label="❌ Supprimer", command=self.confirm_delete); m.post(e.x_root, e.y_root)
 
     def confirm_delete(self):
-        selected = self.tree.selection()
-        if not selected:
-            return
+        v = self.tree.item(self.tree.selection()[0])["values"]
+        if messagebox.askyesno("Supprimer", f"Supprimer {v[1]} ?"):
+            if self.user.delete_transaction(v[4]): self.refresh_all()
 
-        # On récupère les valeurs de la ligne (la REF est à l'index 4)
-        values = self.tree.item(selected[0])["values"]
-        ref = values[4]
-        desc = values[1]
+    def load_for_edit(self, e):
+        if sel := self.tree.selection():
+            v = self.tree.item(sel[0])['values']
+            self.vars["desc"].set(v[1]); self.vars["type"].set(v[3].lower()); self.editing_ref = v[4]
+            self.vars["amt"].set(v[2].replace('+', '').replace('-', '').replace(' €', '').strip())
+            self.save_btn.config(text="MODIFIER L'OPÉRATION", bg="#FB6340")
 
-        if messagebox.askyesno("Confirmation", f"Supprimer l'opération '{desc}' ?"):
-            if self.user.delete_transaction(ref):
-                messagebox.showinfo("Succès", "Opération supprimée.")
-                self.refresh_all()
-            else:
-                messagebox.showerror("Erreur", "Impossible de supprimer l'opération.")
-    def load_for_edit(self, event):
-        selected = self.tree.selection()
-        if not selected: return
-        
-        values = self.tree.item(selected[0])['values']
-        
-        # On remplit le formulaire avec les valeurs de la ligne
-        self.vars["desc"].set(values[1])
-        # On nettoie le montant (enlever le '+' ou '-' et le '€')
-        amt = values[2].replace('+', '').replace('-', '').replace(' €', '').strip()
-        self.vars["amt"].set(amt)
-        self.vars["type"].set(values[3].lower())
-        # Note : Si tu n'affiches pas la catégorie dans le tableau, 
-        # il faudra peut-être l'ajouter ou la laisser par défaut.
-        
-        self.editing_ref = values[4] # On stocke la ref pour le prochain "Enregistrer"
+    def reset_sort(self):
+        """Remet le tri par défaut (plus récent en haut)."""
+        self.f_sort.set("Date (Récent)")
+        self.refresh_all()
