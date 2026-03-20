@@ -1,4 +1,5 @@
 import tkinter as tk
+import re
 from tkinter import messagebox
 from user_account import UserAccount
 
@@ -50,21 +51,33 @@ class RegisterWindow(tk.Toplevel):
         return v
 
     def handle_register(self):
-        # Récupération et nettoyage
         n, pr, em, p, pc = self.nom.get().strip(), self.prenom.get().strip(), self.email.get().strip(), self.pwd.get().strip(), self.pwd_conf.get().strip()
 
         if not all([n, pr, em, p]):
             return messagebox.showerror("Erreur", "Tous les champs sont obligatoires.")
+        
+        # 1. Sécurité Email
+        if not UserAccount.validate_email(em):
+            return messagebox.showerror("Erreur Email", "Format d'email invalide (ex: jean@test.com).")
 
+        # 2. Vérification correspondance
         if p != pc:
             return messagebox.showerror("Erreur", "Les mots de passe ne correspondent pas.")
 
-        if not UserAccount.validate_password_strength(p):
-            return messagebox.showerror("Sécurité", "Mot de passe trop faible (10 car., Maj, Min, Chiffre, Symbole)")
+        # 3. Détail des erreurs de Mot de Passe
+        if len(p) < 10:
+            return messagebox.showwarning("Sécurité", "Le mot de passe doit contenir au moins 10 caractères.")
+        if not re.search(r"[A-Z]", p):
+            return messagebox.showwarning("Sécurité", "Il manque une lettre MAJUSCULE.")
+        if not re.search(r"[a-z]", p):
+            return messagebox.showwarning("Sécurité", "Il manque une lettre minuscule.")
+        if not re.search(r"[0-9]", p):
+            return messagebox.showwarning("Sécurité", "Il manque au moins un chiffre.")
+        if not re.search(r"[!@#$%^&*]", p):
+            return messagebox.showwarning("Sécurité", "Il manque un caractère spécial (!@#$%^&*).")
 
-        # Appel à la logique UserAccount
         if UserAccount(n, pr, em, p).register():
-            messagebox.showinfo("Succès", f"Félicitations {pr}, compte créé !")
+            messagebox.showinfo("Succès", f"Compte créé pour {pr} !")
             self.destroy()
         else:
-            messagebox.showerror("Erreur", "Email déjà utilisé.")
+            messagebox.showerror("Erreur", "Cet email est déjà enregistré.")
